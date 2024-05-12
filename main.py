@@ -4,12 +4,17 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 from keras.src.saving import load_model
 from tensorflow.keras import layers, models
 from tensorflow import keras
+from tensorflow.keras.optimizers import Adam
 import numpy as np
 from matplotlib import pyplot as plt
 from customtkinter import *
 import Image, ImageDraw
 import pickle
 from math import *
+from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
+import seaborn as sns
+
+labels_list = [0,1,2,3,4,5,6,7,8,9]
 
 
 def predict_digit():
@@ -84,10 +89,6 @@ def predict_digit():
 def testing():
 
     def get_input():
-        evaluation = convolutional_neural_network.evaluate(X_test, y_test)
-        print("Test Accuracy:", evaluation[1])
-        y_predicted_by_model = convolutional_neural_network.predict(X_test)
-        y_predicted_labels = [np.argmax(i) for i in y_predicted_by_model]
         lbl2.configure(text=f"Testing accuracy: {round(evaluation[1],5)}", font=('Franklin Gothic Medium', 15, 'bold'))
         lbl3 = CTkLabel(t, text=f"Testing loss: {round(evaluation[0],5)} ", font=('Franklin Gothic Medium', 15, 'bold'))
         lbl3.pack(pady=10)
@@ -129,6 +130,54 @@ def testing():
 
     t.mainloop()
 
+def stats():
+    t = CTk()
+    t.title("Testing statistics")
+    lbl1 = CTkLabel(t, text=f"Classification Report: ", font=('Franklin Gothic Medium', 15, 'bold'))
+    lbl1.pack(pady=10, padx=20)
+    lbl3 = CTkLabel(t, text=f"{classification_report(y_test, y_predicted_labels)} ", font=('Franklin Gothic Medium', 18))
+    lbl3.pack(pady=10,padx=20)
+
+    conf_matrix = confusion_matrix(y_test, y_predicted_labels)
+    print("\nConfusion Matrix:")
+    print(conf_matrix)
+    print(classification_report(y_test, y_predicted_labels))
+    # Plot ROC curve for each class using one-vs-all approach
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(len(labels_list)):
+        fpr[i], tpr[i], _ = roc_curve(y_test == i, y_predicted_by_model[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Plot ROC curve
+    plt.figure(figsize=(8, 6))
+    colors = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'pink']
+    for i, color in zip(range(len(labels_list)), colors):
+        plt.plot(fpr[i], tpr[i], color=color, lw=2,
+                 label='ROC curve of class {0} (area = {1:0.2f})'
+                       ''.format(i, roc_auc[i]))
+
+    plt.plot([0, 1], [0, 1], 'k--', lw=2)
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve for Multi-Class Classification')
+    plt.legend(loc="lower right")
+    plt.show()
+
+    # plot cnn confusion matrix
+    plt.figure(figsize=(5, 5))
+    sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='g', cbar=False)
+    plt.xlabel('Predicted Labels')
+    plt.ylabel('True Labels')
+    plt.title('Confusion Matrix on Test Data')
+    plt.xticks(ticks=np.arange(len(labels_list)), labels=labels_list, rotation=45)
+    plt.yticks(ticks=np.arange(len(labels_list)), labels=labels_list, rotation=0)
+    plt.show()
+    t.mainloop()
+
 
 class menu():
     def __init__(self):
@@ -147,14 +196,16 @@ class menu():
         title_lbl.place(x=125, y=100)
         grp1 = CTkLabel(self.root, text="Aiman Imran 21K-4525", font=('Franklin Gothic Medium', 12))
         grp2 = CTkLabel(self.root, text="Bilal Hassan 21K-4669", font=('Franklin Gothic Medium', 12))
-        grp1.place(x=440, y=490)
-        grp2.place(x=440, y=510)
+        grp1.place(x=440, y=500)
+        grp2.place(x=440, y=520)
         g_btn = CTkButton(self.root, text="Training Graphs", font=('Century Gothic', 23), command=self.graphs)
+        t_btn = CTkButton(self.root, text="Testing Stats", font=('Century Gothic', 23), command=self.test)
         ds_btn = CTkButton(self.root, text="Test on Dataset", font=('Century Gothic', 23), command=self.dataset)
         d_btn = CTkButton(self.root, text="Test on Drawing", font=('Century Gothic', 23), command=self.predict)
-        g_btn.place(x=210, y=210)
-        ds_btn.place(x=212, y=280)
-        d_btn.place(x=210, y=350)
+        g_btn.place(x=210, y=200)
+        t_btn.place(x=230, y=270)
+        ds_btn.place(x=212, y=340)
+        d_btn.place(x=210, y=410)
         self.root.mainloop()
 
     def graphs(self):
@@ -186,6 +237,9 @@ class menu():
     def dataset(self):
         testing()
 
+    def test(self):
+        stats()
+
 
 (X_train, y_train), (X_test, y_test) = keras.datasets.mnist.load_data()
 
@@ -207,7 +261,7 @@ except:
     convolutional_neural_network = models.Sequential([
         layers.Conv2D(filters=25, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
         layers.MaxPooling2D((2, 2)),
-        layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu'),
+        layers.Conv2D(filters=64, kernel_size=(5, 5), activation='relu'),
         layers.MaxPooling2D((2, 2)),
         layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu'),
         layers.MaxPooling2D((2, 2)),
@@ -215,10 +269,14 @@ except:
         layers.Dense(64, activation='relu'),
         layers.Dense(10, activation='softmax')
     ])
-    convolutional_neural_network.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    learning_rate = 0.001
+    batch_size = 64
+
+    optimizer = Adam(learning_rate=learning_rate)
+    convolutional_neural_network.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy',metrics=['accuracy'])
 
     # Train the model
-    history = convolutional_neural_network.fit(X_train, y_train, epochs=20)
+    history = convolutional_neural_network.fit(X_train, y_train, epochs=10, batch_size=batch_size)
 
     # Save the trained model and its history
     convolutional_neural_network.save('cnnmodel.keras')
@@ -227,5 +285,9 @@ except:
     print("Model saved.")
     history = history.history
 
+evaluation = convolutional_neural_network.evaluate(X_test, y_test)
+print("Test Accuracy:", evaluation[1])
+y_predicted_by_model = convolutional_neural_network.predict(X_test)
+y_predicted_labels = [np.argmax(i) for i in y_predicted_by_model]
 set_default_color_theme("green")
 menu()
