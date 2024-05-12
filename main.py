@@ -202,10 +202,10 @@ class menu():
         t_btn = CTkButton(self.root, text="Testing Stats", font=('Century Gothic', 23), command=self.test)
         ds_btn = CTkButton(self.root, text="Test on Dataset", font=('Century Gothic', 23), command=self.dataset)
         d_btn = CTkButton(self.root, text="Test on Drawing", font=('Century Gothic', 23), command=self.predict)
-        g_btn.place(x=210, y=200)
-        t_btn.place(x=230, y=270)
-        ds_btn.place(x=212, y=340)
-        d_btn.place(x=210, y=410)
+        g_btn.place(x=210, y=190)
+        t_btn.place(x=230, y=260)
+        ds_btn.place(x=212, y=330)
+        d_btn.place(x=210, y=400)
         self.root.mainloop()
 
     def graphs(self):
