@@ -90,8 +90,7 @@ def testing():
 
     def get_input():
         lbl2.configure(text=f"Testing accuracy: {round(evaluation[1],5)}", font=('Franklin Gothic Medium', 15, 'bold'))
-        lbl3 = CTkLabel(t, text=f"Testing loss: {round(evaluation[0],5)} ", font=('Franklin Gothic Medium', 15, 'bold'))
-        lbl3.pack(pady=10)
+        lbl3.configure(text=f"Testing loss: {round(evaluation[0],5)} ", font=('Franklin Gothic Medium', 15, 'bold'))
         start = int(entry1.get())
         end = int(entry2.get())
         plt.figure(figsize=(10, 5))
@@ -127,6 +126,8 @@ def testing():
     button.pack(padx=10,pady=20)
     lbl2=CTkLabel(t,text="")
     lbl2.pack(pady=3)
+    lbl3 = CTkLabel(t, text="")
+    lbl3.pack(pady=10)
 
     t.mainloop()
 
